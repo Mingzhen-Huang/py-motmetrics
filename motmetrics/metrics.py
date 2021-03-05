@@ -325,11 +325,16 @@ class MetricsHost:
             return already
         minfo = self.metrics[name]
         vals = []
+
+        # import pdb;
+        # pdb.set_trace()
+
         for depname in minfo['deps_m']:
             v = cache.get(depname, None)
             if v is None:
                 v = cache[depname] = self._compute_overall(partials, depname, cache, parent=name)
             vals.append(v)
+
         assert minfo['fnc_m'] is not None, 'merge function for metric %s is None' % name
         return minfo['fnc_m'](partials, *vals)
 
@@ -697,6 +702,7 @@ def idr_m(partials, idtp, idfn):
 
 def idf1(df, idtp, num_objects, num_predictions):
     """ID measures: global min-cost F1 score."""
+    # print(q)
     del df  # unused
     return math_util.quiet_divide(2 * idtp, num_objects + num_predictions)
 
@@ -705,10 +711,25 @@ def idf1_m(partials, idtp, num_objects, num_predictions):
     del partials  # unused
     return math_util.quiet_divide(2 * idtp, num_objects + num_predictions)
 
+def longest_tracked(df):
+    nonna_df = df.noraw.dropna(axis=0, how='any')
+    oids = nonna_df.OId.unique()
+    oid_tracked = 0
+    for oid in oids:
+        hid_count = nonna_df[nonna_df.OId==oid].HId.value_counts().values[0]
+        oid_tracked += hid_count / df.noraw[df.noraw.OId==oid].OId.count()
+    return oid_tracked / len(oids)
+
+def longest_tracked_m(partials, num_unique_objects):
+    res = 0
+    total = 0
+    for v in partials:
+        res += v['longest_tracked'] * num_unique_objects
+        total += num_unique_objects
+    return res/total
 
 for one in simple_add_func:
     name = one.__name__
-
     def getSimpleAdd(nm):
         def simpleAddHolder(partials):
             res = 0
@@ -754,7 +775,7 @@ def create():
     m.register(idp, formatter='{:.1%}'.format)
     m.register(idr, formatter='{:.1%}'.format)
     m.register(idf1, formatter='{:.1%}'.format)
-
+    m.register(longest_tracked, formatter='{:.3f}'.format)
     return m
 
 
@@ -777,5 +798,6 @@ motchallenge_metrics = [
     'num_transfer',
     'num_ascend',
     'num_migrate',
+    'longest_tracked',
 ]
 """A list of all metrics from MOTChallenge."""

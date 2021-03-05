@@ -257,6 +257,7 @@ class MOTAccumulator(object):
 
                 o = oids[i]
                 h = hids[j]
+
                 is_switch = (o in self.m and
                              self.m[o] != h and
                              abs(frameid - self.last_occurrence[o]) <= self.max_switch_time)
